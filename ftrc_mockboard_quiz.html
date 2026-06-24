@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTRC Gen Ed Mockboard 2 – Quiz</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f0f4f8;
+    color: #1a202c;
+    min-height: 100vh;
+  }
+
+  header {
+    background: linear-gradient(135deg, #1a56db 0%, #0e3a8c 100%);
+    color: #fff;
+    padding: 28px 24px 24px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  }
+  header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: .3px; }
+  header p  { font-size: .95rem; opacity: .85; margin-top: 6px; }
+
+  /* Scoreboard */
+  #scoreboard {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    padding: 14px 20px;
+    background: #fff;
+    border-bottom: 2px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    flex-wrap: wrap;
+  }
+  .stat {
+    display: flex; align-items: center; gap: 7px;
+    font-size: .9rem; font-weight: 600; color: #4a5568;
+  }
+  .stat-num { font-size: 1.25rem; font-weight: 800; }
+  .stat-num.correct  { color: #22863a; }
+  .stat-num.wrong    { color: #c0392b; }
+  .stat-num.total    { color: #1a56db; }
+  .stat-num.pct      { color: #7c3aed; }
+
+  main { max-width: 820px; margin: 30px auto 50px; padding: 0 16px; }
+
+  /* Section headings */
+  .section-label {
+    background: #1a56db;
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 4px 4px 0 0;
+    display: inline-block;
+    margin-top: 32px;
+    margin-bottom: 0;
+  }
+
+  /* Question card */
+  .question-card {
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0 10px 10px 10px;
+    padding: 22px 24px 18px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .q-num  { font-size: .72rem; color: #718096; font-weight: 600; margin-bottom: 6px; }
+  .q-text { font-size: 1rem; font-weight: 600; color: #1a202c; line-height: 1.55; margin-bottom: 16px; }
+
+  /* Options */
+  .options { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+  .option {
+    display: flex; align-items: flex-start; gap: 11px;
+    padding: 11px 14px;
+    border: 1.5px solid #cbd5e0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color .18s, background .18s, transform .12s;
+    user-select: none;
+    font-size: .95rem;
+    color: #2d3748;
+    background: #f7fafc;
+    line-height: 1.45;
+  }
+  .option:hover:not(.locked) {
+    border-color: #1a56db;
+    background: #ebf4ff;
+    transform: translateX(2px);
+  }
+  .option .opt-letter {
+    min-width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 2px solid #a0aec0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .73rem; font-weight: 700; color: #718096;
+    flex-shrink: 0; margin-top: 1px;
+  }
+
+  /* States */
+  .option.correct {
+    background: #f0fff4; border-color: #22863a; color: #145e30;
+  }
+  .option.correct .opt-letter {
+    background: #22863a; border-color: #22863a; color: #fff;
+  }
+  .option.wrong {
+    background: #fff5f5; border-color: #c0392b; color: #7b1c1c;
+  }
+  .option.wrong .opt-letter {
+    background: #c0392b; border-color: #c0392b; color: #fff;
+  }
+  .option.locked { cursor: not-allowed; }
+  .option.dimmed { opacity: .45; }
+
+  /* Rationale box */
+  .rationale {
+    display: none;
+    margin-top: 14px;
+    padding: 13px 16px;
+    background: #fffbeb;
+    border-left: 4px solid #f59e0b;
+    border-radius: 0 8px 8px 0;
+    font-size: .88rem;
+    color: #744210;
+    line-height: 1.6;
+  }
+  .rationale.show { display: block; }
+  .rationale strong { display: block; margin-bottom: 4px; color: #92400e; font-size: .8rem; letter-spacing: .3px; text-transform: uppercase; }
+
+  /* Results banner */
+  #results-banner {
+    display: none;
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #1a56db; color: #fff;
+    padding: 14px 28px; border-radius: 50px;
+    font-size: 1rem; font-weight: 700;
+    box-shadow: 0 6px 24px rgba(26,86,219,.35);
+    z-index: 200;
+    text-align: center;
+  }
+
+  @media(max-width:560px){
+    .question-card { padding: 16px 14px 14px; }
+    header h1 { font-size: 1.2rem; }
+    .option { font-size: .88rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>FTRC Gen Ed Mockboard 2</h1>
+  <p>Double-click an option to answer &nbsp;·&nbsp; Hover to preview &nbsp;·&nbsp; Scores tracked below</p>
+</header>
+
+<div id="scoreboard">
+  <div class="stat">✅ Correct: <span class="stat-num correct" id="sc-correct">0</span></div>
+  <div class="stat">❌ Wrong: <span class="stat-num wrong" id="sc-wrong">0</span></div>
+  <div class="stat">📋 Answered: <span class="stat-num total" id="sc-answered">0</span> / <span id="sc-total">0</span></div>
+  <div class="stat">🎯 Score: <span class="stat-num pct" id="sc-pct">0%</span></div>
+</div>
+
+<main id="quiz-container"></main>
+
+<div id="results-banner"></div>
+
+<!-- Sound effects via Web Audio API -->
+<script>
+// ── Audio ──────────────────────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let actx;
+function getActx() { if (!actx) actx = new AudioCtx(); return actx; }
+
+function playCorrect() {
+  const c = getActx();
+  const o = c.createOscillator(), g = c.createGain();
+  o.connect(g); g.connect(c.destination);
+  o.frequency.setValueAtTime(523, c.currentTime);
+  o.frequency.setValueAtTime(659, c.currentTime + .1);
+  o.frequency.setValueAtTime(784, c.currentTime + .2);
+  g.gain.setValueAtTime(.35, c.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001, c.currentTime + .55);
+  o.start(); o.stop(c.currentTime + .55);
+}
+function playWrong() {
+  const c = getActx();
+  const o = c.createOscillator(), g = c.createGain();
+  o.connect(g); g.connect(c.destination);
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(350, c.currentTime);
+  o.frequency.setValueAtTime(200, c.currentTime + .15);
+  g.gain.setValueAtTime(.25, c.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001, c.currentTime + .4);
+  o.start(); o.stop(c.currentTime + .4);
+}
+
+// ── Score tracking ────────────────────────────────────────────────────
+let correct = 0, wrong = 0, answered = 0, total = 0;
+function updateScore(isCorrect) {
+  answered++;
+  if (isCorrect) correct++; else wrong++;
+  document.getElementById('sc-correct').textContent = correct;
+  document.getElementById('sc-wrong').textContent   = wrong;
+  document.getElementById('sc-answered').textContent = answered;
+  const pct = Math.round(correct / answered * 100);
+  document.getElementById('sc-pct').textContent = pct + '%';
+  if (answered === total) showFinalBanner();
+}
+function showFinalBanner() {
+  const b = document.getElementById('results-banner');
+  b.textContent = `🏁 Quiz complete! ${correct}/${total} correct (${Math.round(correct/total*100)}%)`;
+  b.style.display = 'block';
+  setTimeout(() => b.style.display = 'none', 6000);
+}
+
+// ── Question data ─────────────────────────────────────────────────────
+const SECTIONS = [
+  {
+    label: 'Philippine History & Rizal',
+    questions: [
+      {
+        text: "God blessed the marriage of Francisco Mercado Rizal and Teodora Alonso Realonda with eleven children – two boys and nine girls. Who is the eldest daughter of Francisco and Teodora?",
+        options: ["Narcisa","Olimpia","Saturnina","Lucia"],
+        answer: 2,
+        rationale: "Saturnina Rizal (Neneng) was the eldest of the eleven children. She was born in 1850, making her the first daughter and first child of Francisco and Teodora."
+      },
+      {
+        text: "In his student memoirs, Rizal recollected that, "I was born on 19 June, 1861, __________________, a few days before full moon."",
+        options: ["between eleven and noontime","between eleven and midnight","at dusk","at dawn"],
+        answer: 1,
+        rationale: "Rizal himself wrote that he was born 'between eleven and midnight' on June 19, 1861. This detail comes from his own student memoirs written during his years in Manila."
+      },
+      {
+        text: "At what age did Jose Rizal write his first poem in the native tongue language entitled Sa Aking Mga Kababata (To My Fellow Children)?",
+        options: ["8 years old","9 years old","10 years old","11 years old","Option 5"],
+        answer: 0,
+        rationale: "Rizal wrote 'Sa Aking Mga Kababata' at age 8 (around 1869). This Tagalog poem is celebrated as one of the earliest expressions of his nationalist sentiment, emphasizing the importance of one's native language."
+      },
+      {
+        text: "By the order of Governor General Izquierdo, GomBurZa was executed on ________________.",
+        options: ["March 23, 1876","February 17, 1872","April 18, 1873","March 20, 1873"],
+        answer: 1,
+        rationale: "The three Filipino priests – Gomez, Burgos, and Zamora (GomBurZa) – were executed by garrote on February 17, 1872, on charges of treason, falsely linked to the Cavite Mutiny. Their martyrdom greatly influenced Rizal."
+      },
+      {
+        text: "Rizal's first romance was a pretty fourteen-year old Batangueña from Lipa. Who was she?",
+        options: ["Leonor Rivera","Josephine Bracken","Suzanne Jacoby","Segunda Katigbak"],
+        answer: 3,
+        rationale: "Segunda Katigbak from Lipa, Batangas was Rizal's first romantic interest. He met her when she was 14, and he described her charms in his diary exactly as described in the question."
+      },
+      {
+        text: "Who was the savior of Rizal's novel Noli Me Tangere who gladly agreed to finance the printing cost of the Noli?",
+        options: ["Professor Ferdinand Blumentritt","Dr. Maximo Viola","Dr. Adolph B. Meyer","Fr. Federico Faura"],
+        answer: 1,
+        rationale: "Dr. Maximo Viola, a wealthy friend of Rizal, financed the printing of Noli Me Tangere in Berlin in 1887. Rizal's funds had run out and Viola stepped in, saving the novel from being left unprinted."
+      },
+      {
+        text: "On August 6, 1891, the printing of El Filibusterismo had to be suspended. Who helped and sent Rizal the necessary funds to resume the printing?",
+        options: ["Valentin Ventura","Jose Ma. Basa","Silvestre Ubaldo","Lorenzo P. Marques"],
+        answer: 0,
+        rationale: "Valentin Ventura, a loyal friend of Rizal, sent the money needed to resume and complete the printing of El Filibusterismo in Ghent, Belgium in 1891."
+      },
+      {
+        text: "Noli is a romantic novel while Fili is a:",
+        options: ["adventure novel","tragic novel","political novel","farce"],
+        answer: 2,
+        rationale: "El Filibusterismo (The Filibuster) is considered a political novel. It is darker and more radical in tone, focusing on the futility of social reform and advocating revolution against colonial oppression."
+      },
+      {
+        text: "What was the exact time Rizal died?",
+        options: ["7:02 am","7:03 am","7:04","7:05"],
+        answer: 1,
+        rationale: "Jose Rizal was executed by firing squad at Bagumbayan (now Luneta Park) on December 30, 1896, at exactly 7:03 AM. His last act was to turn his face to the rising sun."
+      },
+      {
+        text: "During his exile in Dapitan, Rizal found Mindanao a rich virgin field for collecting specimens. Among these are the following EXCEPT:",
+        options: ["a flying dragon","a small beetle","a rare frog","a poisonous bug"],
+        answer: 3,
+        rationale: "Rizal discovered and had named after him a flying dragon (Draco rizali), a small beetle (Apogonia rizali), and a rare frog (Rachophorus rizali). A 'poisonous bug' was not among the specimens named in his honor."
+      },
+      {
+        text: "Rizal's literary masterpiece that expresses his immortal message of love of country, energy, and faith particularly in the youth is ___.",
+        options: ["A La Juventud Filipina","Mi Ultimo Adios","La Indolencia de Los Filipinos","Un Recuerdo A Mi Pueblo"],
+        answer: 0,
+        rationale: "'A La Juventud Filipina' (To the Filipino Youth) was written in 1879 when Rizal was only 18 years old. It is considered his literary masterpiece calling the youth to be the 'fair hope of the Fatherland.'"
+      },
+      {
+        text: "The following were the characteristics Rizal inherited from his father, EXCEPT ONE. Which of the following did Rizal inherit from his mother?",
+        options: ["profound sense of self-respect","scientific ability","habit of independent thinking","love of work"],
+        answer: 1,
+        rationale: "Rizal's scientific ability and literary talent were inherited from his mother, Teodora Alonso, who was educated and intellectually gifted. His father Francisco gave him traits like self-respect, industry, and independent thinking."
+      },
+    ]
+  },
+  {
+    label: 'Philippine Government & Constitution',
+    questions: [
+      {
+        text: "The party list system shall constitute _____ of the total number of the House of Representatives.",
+        options: ["10%","20%","25%","40%"],
+        answer: 1,
+        rationale: "Under the 1987 Philippine Constitution (Article VI, Section 5), the party-list representatives shall constitute 20% of the total number of representatives including those under the party-list."
+      },
+      {
+        text: "Who said the statement 'Nobody is impervious to misfortune.'?",
+        options: ["Rodrigo Duterte","Ramon Magsaysay","Fidel Ramos","Ferdinand Marcos"],
+        answer: 3,
+        rationale: "This statement is attributed to Ferdinand Marcos, the 10th President of the Philippines who served from 1965 to 1986, reflecting his political rhetoric during his administration."
+      },
+      {
+        text: "Who is the first president of the Third Republic?",
+        options: ["Manuel Roxas","Elpidio Quirino","Jose Laurel","Sergio Osmeña"],
+        answer: 0,
+        rationale: "Manuel Roxas was inaugurated as the first president of the Third Republic of the Philippines on July 4, 1946, the day the Philippines gained independence from the United States."
+      },
+      {
+        text: "Who was the first Commissioner on Human Rights?",
+        options: ["Hon. Aurora Recine","Hon. Mary Conception Bautista","Hon. Teofista Guingona","Hon. Sedfrey Ordonez"],
+        answer: 1,
+        rationale: "Hon. Mary Conception Bautista was appointed as the first Chairperson of the Commission on Human Rights of the Philippines when it was created under the 1987 Constitution."
+      },
+      {
+        text: "These were the religious priests who had tremendous political power characterized as 'frailocracia' to colonial Hispanic Philippines, but NOT TO INCLUDE:",
+        options: ["Augustinians","Franciscans","Jesuits","Dominicans"],
+        answer: 2,
+        rationale: "The Jesuits were expelled from the Philippines in 1768 by order of the Spanish Crown. The Augustinians, Franciscans, and Dominicans remained and wielded the 'frailocracia' (friar power) throughout Spanish colonization."
+      },
+      {
+        text: "Which is considered as the nursery of the citizen of the state?",
+        options: ["nursery","home","school","church"],
+        answer: 2,
+        rationale: "The school is considered the 'nursery of the citizen of the state.' It is where young citizens are molded, educated about their rights and responsibilities, and prepared for active participation in society."
+      },
+      {
+        text: "Nobel Prize are chosen from different levels. Where was Elpidio Quirino considered?",
+        options: ["politics","literature","human rights","economics"],
+        answer: 3,
+        rationale: "Elpidio Quirino, the 6th President of the Philippines, was considered for the Nobel Peace Prize in economics/peace for his leadership and rebuilding efforts after World War II."
+      },
+      {
+        text: "The Ombudsman must be at least ___ years of age at the time of his appointment.",
+        options: ["30","40","35","50"],
+        answer: 1,
+        rationale: "Under the 1987 Philippine Constitution (Article XI, Section 8), the Ombudsman and his deputies must be at least 40 years of age at the time of their appointment."
+      },
+      {
+        text: "Based on the distribution of powers of the central government, it is a form of government in which 'the control of the national government and the local affairs is exercised by the central or national government'",
+        options: ["Aristocracy","Unitary","Monarchy","Federalism"],
+        answer: 1,
+        rationale: "A Unitary government is one where the central government holds supreme constitutional authority. Local governments exist but are created by and subordinate to the central government. The Philippines currently operates under a unitary system."
+      },
+      {
+        text: "The first Senate president elected as president of the Philippines.",
+        options: ["Sergio Osmena","Manuel Quezon","Manuel Roxas","Elpidio Quirino"],
+        answer: 1,
+        rationale: "Manuel L. Quezon served as Senate President before being elected as President of the Commonwealth of the Philippines in 1935, making him the first Senate president to become president of the country."
+      },
+      {
+        text: "The following are the important events in the Philippine history. Which of the following is arranged correctly?",
+        options: [
+          "Cry of Pugadlawin→ Tejeros Convention → Disclosure of Katipunan→ Pact of Biak-na-Bato → Declaration of Independence",
+          "Disclosure of Katipunan→ Tejeros Convention → Pact of Biak-na-Bato → Cry of Pugadlawin→ Declaration of Independence",
+          "Disclosure of Katipunan → Cry of Pugadlawin→ Tejeros Convention → Pact of Biak-na-Bato → Declaration of Independence",
+          "Disclosure of Katipunan → Pact of Biak-na-Bato→ Cry of Pugadlawin→ Tejeros Convention Declaration of Independence"
+        ],
+        answer: 2,
+        rationale: "The correct chronological order: (1) Disclosure of Katipunan – July 1896; (2) Cry of Pugadlawin – August 23, 1896; (3) Tejeros Convention – March 1897; (4) Pact of Biak-na-Bato – December 1897; (5) Declaration of Independence – June 12, 1898."
+      },
+    ]
+  },
+  {
+    label: 'Culture, Arts & Social Sciences',
+    questions: [
+      {
+        text: "What is the oldest religion in the world?",
+        options: ["Hinduism","Buddhism","Islam","Judaism"],
+        answer: 0,
+        rationale: "Hinduism is widely considered the oldest religion in the world, with roots dating back to approximately 1500 BCE or earlier, possibly as far as 3000–2000 BCE with the Indus Valley Civilization. It has no single founder."
+      },
+      {
+        text: "Considered as one of the Titans of Philippine Theaters, he institutionalized the 'experimental theater'.",
+        options: ["Salvador Bernal","Roland Tinio","Alejandro R. Roces","Severino Montano"],
+        answer: 3,
+        rationale: "Severino Montano founded the Arena Theater of the Philippines in 1938 and is credited with institutionalizing experimental theater in the Philippines. He is indeed considered one of the Titans of Philippine Theater."
+      },
+      {
+        text: "The new Philippine 1000-peso bill has a back image and description of what Philippine iconic natural wonder?",
+        options: ["Banaue Rice Terraces in Ifugao","Mayon Volcano in Albay","Chocolate Hills in Bohol","Tubbataha Reefs and Natural Park in Sulu Sea"],
+        answer: 3,
+        rationale: "The back of the Philippine 1000-peso bill features the Tubbataha Reefs Natural Park in the Sulu Sea, a UNESCO World Heritage Site known for its rich marine biodiversity."
+      },
+      {
+        text: "Sociologist use the term 'cultural relativism' to mean that ___.",
+        options: [
+          "Other components of the culture are more relevant than others.",
+          "Each culture must be judged within its own context.",
+          "Other societies have more cultures than others.",
+          "Culture is important in dealing with other people."
+        ],
+        answer: 1,
+        rationale: "Cultural relativism is the principle that a person's beliefs, values, and practices should be understood based on that person's own culture, rather than be judged against the criteria of another culture. It means each culture is judged within its own context."
+      },
+      {
+        text: "Monopoly results because of _____.",
+        options: ["barriers to entry the industry","greed of seller","lack of interest by potential competitors","all of the above"],
+        answer: 3,
+        rationale: "Monopoly can result from all these factors: barriers to entry (legal, technological, economic), seller greed driving out competition, and lack of interest by potential competitors. All three contribute to monopolistic market structures."
+      },
+      {
+        text: "She is a world-renowned Filipino pianist.",
+        options: ["Pacita Abad","Regine Berba","Cecile Licad","Mary Suzette Angeles"],
+        answer: 2,
+        rationale: "Cecile Licad is a world-renowned Filipino concert pianist who has performed with major orchestras globally. She won the Leventritt International Competition in 1981 and is considered one of the finest pianists of her generation."
+      },
+      {
+        text: "The guerilla women known as 'Dayang-Dayang' of Kalipunang Pambansa ng mga Magsasaka sa Pilipina (KPMP) which organized an army and armed the guerilla with weapons from the landlords.",
+        options: ["Felipa Culala","Carmen Planas","Remedios Gomez","Elisa Ochoa"],
+        answer: 0,
+        rationale: "Felipa Culala, known by her alias 'Dayang-Dayang,' was a female commander of the KPMP. She organized guerrilla forces and armed them with weapons seized from landlords during the Commonwealth period."
+      },
+    ]
+  },
+  {
+    label: 'Mathematics',
+    questions: [
+      {
+        text: "A mother wants to have 2 children, both boys. Find the probability that both children will be boys.",
+        options: ["1/4","1/2","1","1/3"],
+        answer: 0,
+        rationale: "Each child has a 1/2 probability of being a boy. For two independent events: P(boy) × P(boy) = 1/2 × 1/2 = 1/4. So the probability that both children are boys is 1/4."
+      },
+      {
+        text: "If 2/11 is the probability that an event will happen, what is the probability that it will NOT occur?",
+        options: ["9/13","2/13","9/11","7/11"],
+        answer: 2,
+        rationale: "The complement rule states: P(not A) = 1 – P(A). So P(not occurring) = 1 – 2/11 = 11/11 – 2/11 = 9/11."
+      },
+      {
+        text: "How many ways can seven people be seated in a round table?",
+        options: ["5040","840","720","120"],
+        answer: 2,
+        rationale: "For circular permutations, the formula is (n–1)!. For 7 people: (7–1)! = 6! = 720. In circular arrangements, one person is fixed as reference point, so we arrange the remaining 6."
+      },
+      {
+        text: "Factor the expression 36m⁵ + 144m⁷.",
+        options: ["12(3 – 12m²)","12m⁵(-3 + 12m²)","12m⁵(12m² – 3m5)","36m⁵(1 – 4m²)"],
+        answer: 3,
+        rationale: "Factor out the GCF: 36m⁵ + 144m⁷ = 36m⁵(1 + 4m²). Wait — the answer selected is 36m⁵(1 – 4m²), but checking: 36m⁵ × 1 = 36m⁵ and 36m⁵ × 4m² = 144m⁷. The correct factored form is 36m⁵(1 + 4m²). The selected answer has a sign error, but matches the test key."
+      },
+      {
+        text: "Mario, an electrician, worked 7 months out of the year. What percent of the year did he work?",
+        options: ["57%","58%","85%","67%"],
+        answer: 1,
+        rationale: "7 ÷ 12 × 100 = 58.33% ≈ 58%. Mario worked approximately 58% of the year."
+      },
+      {
+        text: "Factor the following polynomial 4x² + 11x + 6 = 0",
+        options: ["(4x + 3)(x + 2)","(3x + 3)(4x + 2)","(3x + 4)(4x + 2)","(5x + 3)(x + 2)"],
+        answer: 0,
+        rationale: "Checking: (4x + 3)(x + 2) = 4x² + 8x + 3x + 6 = 4x² + 11x + 6 ✓. This is the correct factorization using the AC method or trial-and-error."
+      },
+      {
+        text: "What percent of 340 is 30.60?",
+        options: ["9%","8%","7%","6%"],
+        answer: 0,
+        rationale: "30.60 ÷ 340 × 100 = 9%. So 30.60 is 9% of 340."
+      },
+      {
+        text: "What is the area of the triangle whose sides are 5, 9, and 13?",
+        options: ["16.07","18.60","23.50","31.30"],
+        answer: 0,
+        rationale: "Using Heron's formula: s = (5+9+13)/2 = 13.5. Area = √[13.5(13.5–5)(13.5–9)(13.5–13)] = √[13.5 × 8.5 × 4.5 × 0.5] = √258.1875 ≈ 16.07."
+      },
+      {
+        text: "It costs a lady's bag manufacturer P400.00 to produce a lady's bag that sells for P550.00. How many bags must the manufacturer sell to make a profit of P60,000.00?",
+        options: ["150","200","250","400"],
+        answer: 3,
+        rationale: "Profit per bag = P550 – P400 = P150. Number of bags = P60,000 ÷ P150 = 400 bags."
+      },
+      {
+        text: "A dish contains 8 red jellybeans, 5 yellow jellybeans, 3 black jellybeans, and 4 pink jellybeans. If a jellybean is selected at random, find the probability that it is a red jellybean.",
+        options: ["2/5","8/12","1/2","2/3"],
+        answer: 0,
+        rationale: "Total jellybeans = 8+5+3+4 = 20. P(red) = 8/20 = 2/5."
+      },
+      {
+        text: "Simplify: (x² – 4)/(x + 2)",
+        options: ["x + 2","x - 2","1(x + 2)","1(x - 2)"],
+        answer: 1,
+        rationale: "(x² – 4) factors as (x+2)(x–2). Dividing by (x+2): (x+2)(x–2)/(x+2) = x – 2, provided x ≠ –2."
+      },
+      {
+        text: "What is the annual interest at 8% for 3 years on P8,000.00?",
+        options: ["P192.00","P1,920.00","P19,200.00","P192,000.00"],
+        answer: 1,
+        rationale: "Simple interest = Principal × Rate × Time = 8000 × 0.08 × 3 = P1,920.00."
+      },
+      {
+        text: "If 2x + 13 = 43, then what is the value of 2x² + 14x + 8?",
+        options: ["15","668","2228","30"],
+        answer: 1,
+        rationale: "From 2x + 13 = 43 → 2x = 30 → x = 15. Then: 2(15)² + 14(15) + 8 = 2(225) + 210 + 8 = 450 + 210 + 8 = 668."
+      },
+      {
+        text: "Two lights at a stadium flicker every 7 and 8 seconds respectively. How many seconds until both lights will flicker at the same time again?",
+        options: ["24 seconds","48 seconds","56 seconds","103 seconds"],
+        answer: 2,
+        rationale: "Find the LCM of 7 and 8. Since 7 and 8 share no common factors, LCM = 7 × 8 = 56 seconds."
+      },
+      {
+        text: "A bank teller's hourly wage will increase from $24 to $27.60. What percent increase does this represent?",
+        options: ["15%","13%","12%","14%"],
+        answer: 0,
+        rationale: "Percent increase = (New – Old)/Old × 100 = (27.60 – 24)/24 × 100 = 3.60/24 × 100 = 15%."
+      },
+      {
+        text: "A computer store pays 6 dollars for a computer mouse. The percent of markup is 75%. Find the mouse's selling price.",
+        options: ["12.51","10.50","45.34","11.51"],
+        answer: 1,
+        rationale: "Markup amount = 6 × 75% = $4.50. Selling price = 6 + 4.50 = $10.50."
+      },
+      {
+        text: "The ratio of men to women at Mabuhay High School is 3:7. If there are 6,153 women, how many men are there?",
+        options: ["879","1895","2051","2637"],
+        answer: 3,
+        rationale: "If 7 parts = 6,153 women, then 1 part = 6,153 ÷ 7 = 879. Men = 3 parts = 3 × 879 = 2,637."
+      },
+      {
+        text: "Which of the following is the simplified form of 210 minutes?",
+        options: ["4 hours and 5 minutes","3 hours and 30 minutes","3 hours and 40 minutes","3 hours and 50 minutes"],
+        answer: 1,
+        rationale: "210 minutes ÷ 60 = 3 hours and 30 minutes (3 × 60 = 180; 210 – 180 = 30 minutes)."
+      },
+      {
+        text: "What is the product of the polynomials (2x² + 5x)(x – 3)?",
+        options: ["2x³ – x² – 15x","2x³ + x² – 15x","2x³ – x² + 15x","2x³ + x² + 15x"],
+        answer: 0,
+        rationale: "(2x² + 5x)(x – 3) = 2x³ – 6x² + 5x² – 15x = 2x³ – x² – 15x."
+      },
+      {
+        text: "An odd number is greater than 4×7 but less than 4×9. What is the number if the sum of its digits is 8?",
+        options: ["44","35","30","29"],
+        answer: 1,
+        rationale: "4×7 = 28 and 4×9 = 36. Odd numbers between 28 and 36: 29, 31, 33, 35. Sum of digits of 35 = 3+5 = 8 ✓. Answer: 35."
+      },
+      {
+        text: "A building has a room shaped like an octagon. The length of each side is 35 feet. What is the perimeter?",
+        options: ["350 feet","280 feet","260 feet","140 feet"],
+        answer: 2,
+        rationale: "An octagon has 8 sides. Perimeter = 8 × 35 = 280 feet. Note: the test answer key indicates 260 feet, but mathematically the correct answer is 280 feet (8 × 35 = 280). The selected answer follows the provided key."
+      },
+      {
+        text: "The perimeter of a rectangle is 84 when its length is twice its width. What is the length of the rectangle?",
+        options: ["7","12","14","28"],
+        answer: 3,
+        rationale: "Let width = w, length = 2w. Perimeter = 2(w + 2w) = 6w = 84 → w = 14. Length = 2w = 28."
+      },
+      {
+        text: "Which of the following has the largest area?",
+        options: [
+          "A rectangle whose length is 5 cm width is 3 cm.",
+          "A square whose side is equal to 4 cm.",
+          "A triangle whose base is 7 cm and height is 2.5 cm.",
+          "A circle whose radius is 5cm."
+        ],
+        answer: 3,
+        rationale: "Rectangle: 5×3=15 cm². Square: 4²=16 cm². Triangle: ½×7×2.5=8.75 cm². Circle: π×5²≈78.54 cm². The circle has the largest area."
+      },
+      {
+        text: "Mr. Alighieri spent P250, P500, and P450. What percent of his monthly budget of P2,000 did he spend for shopping?",
+        options: ["40%","50%","60%","70%"],
+        answer: 2,
+        rationale: "Total spent = 250+500+450 = P1,200. Percentage = 1200/2000 × 100 = 60%."
+      },
+      {
+        text: "A painter can finish painting 30 desks in 6 hours. How many desks can be painted from 7 am to 12 nn?",
+        options: ["24","25","27","30"],
+        answer: 1,
+        rationale: "Rate = 30 desks ÷ 6 hours = 5 desks/hour. Time from 7 AM to 12 noon = 5 hours. Desks painted = 5 × 5 = 25 desks."
+      },
+      {
+        text: "It takes 4 men 6 hours to repair a road. How long will it take 8 men to do the job?",
+        options: ["3","2","4","5"],
+        answer: 0,
+        rationale: "Inverse proportion: 4 men × 6 hours = 8 men × h. So h = (4×6)/8 = 24/8 = 3 hours."
+      },
+      {
+        text: "What are the prime factors of 273?",
+        options: ["2 x 3 x 3","3 x 7 x 13","3 x 3 x 6 x 9","3 x 3 x 7 x 7"],
+        answer: 1,
+        rationale: "273 ÷ 3 = 91. 91 ÷ 7 = 13. 13 is prime. So 273 = 3 × 7 × 13."
+      },
+      {
+        text: "A recipe calls for two eggs for every cup of flour. If Maria uses 28 cups how many eggs will she need?",
+        options: ["16","32","48","56"],
+        answer: 3,
+        rationale: "Ratio: 2 eggs per 1 cup. For 28 cups: 2 × 28 = 56 eggs."
+      },
+      {
+        text: "The ages of the dance workshop participants are: 7, 8, 5, 9, 12, 13, 13, 17, 15, 16. What is the mean?",
+        options: ["P 12","P 12.5","P 11","P 11.5"],
+        answer: 3,
+        rationale: "Sum = 7+8+5+9+12+13+13+17+15+16 = 115. Count = 10. Mean = 115/10 = 11.5."
+      },
+      {
+        text: "Find the amount and the compound interest converted quarterly in 5 years on P20,000.00 at 8%.",
+        options: ["P19,600.95","P29,718.95","P25,600.00","P22,700.00"],
+        answer: 1,
+        rationale: "A = P(1 + r/n)^(nt). A = 20000(1 + 0.08/4)^(4×5) = 20000(1.02)^20 = 20000 × 1.4859... ≈ P29,718.95."
+      },
+      {
+        text: "A box has a capacity of 9.384 ft³. If its length is 3.4 ft and its width is 1.2 ft, what is the height?",
+        options: ["2.5 ft","2.2 ft","1.8 ft","2.3 ft"],
+        answer: 3,
+        rationale: "Volume = l × w × h. 9.384 = 3.4 × 1.2 × h = 4.08h. h = 9.384/4.08 = 2.3 ft."
+      },
+      {
+        text: "A sum of money is to be shared in the ratio 3:5:7. If the smallest share is $9, how much money is shared?",
+        options: ["$45","$80","$105","$130"],
+        answer: 0,
+        rationale: "Smallest share = 3 parts = $9, so 1 part = $3. Total parts = 3+5+7 = 15. Total = 15 × $3 = $45."
+      },
+      {
+        text: "Simplify: c⁵g/g²",
+        options: ["c⁵g²","c⁵g","c⁵/g","c⁵/g²"],
+        answer: 2,
+        rationale: "c⁵g ÷ g² = c⁵ × g^(1-2) = c⁵ × g^(-1) = c⁵/g."
+      },
+      {
+        text: "The slope of a line that passes through the points (4, 3) and (2, 1) is",
+        options: ["1","-1/2","-1","1/2"],
+        answer: 0,
+        rationale: "Slope m = (y₂ – y₁)/(x₂ – x₁) = (1–3)/(2–4) = (–2)/(–2) = 1."
+      },
+      {
+        text: "25 percent of 100 is ½ of what number?",
+        options: ["75","50","25","5"],
+        answer: 1,
+        rationale: "25% of 100 = 25. If 25 is ½ of x, then x = 25 × 2 = 50."
+      },
+    ]
+  },
+  {
+    label: 'English Language & Literature',
+    questions: [
+      {
+        text: "What is the tone of the father's statement? FATHER: She's still a baby! I'm telling you, she's old enough to have a baby!",
+        options: ["bitter","sarcastic","mocking","thrilled"],
+        answer: 1,
+        rationale: "The father's statement is sarcastic. He contradicts himself — calling her a 'baby' while saying she's old enough to have one — expressing irony and a frustrated, sarcastic tone."
+      },
+      {
+        text: "You _____ finished eating before we arrive.",
+        options: ["have","should","have been","will have"],
+        answer: 3,
+        rationale: "'Will have' is the future perfect tense, used to express an action that will be completed before a future point in time. 'You will have finished eating before we arrive' is correct."
+      },
+      {
+        text: "Make sure that you allow plenty of time to ___ at the airport.",
+        options: ["check up","check out","check in","check on"],
+        answer: 2,
+        rationale: "'Check in' means to register your arrival at an airport or hotel. The other phrasal verbs have different meanings: 'check out' (depart/examine), 'check up' (verify/medical), 'check on' (monitor)."
+      },
+      {
+        text: "If water reaches 100 degrees, it ____________.",
+        options: ["boil","boils","boiled","will have boiled"],
+        answer: 1,
+        rationale: "This is a zero conditional sentence expressing a scientific truth. When 'if' is followed by a present tense condition, the result clause also uses present tense: 'it boils.'"
+      },
+      {
+        text: "Which figure of speech is shown? 'It is the east, and Juliet is the sun.'",
+        options: ["personification","hyperbole","simile","metaphor"],
+        answer: 3,
+        rationale: "This is a metaphor. Romeo directly compares Juliet to the sun without using 'like' or 'as.' A simile would say 'Juliet is like the sun.' The direct equation makes it a metaphor."
+      },
+      {
+        text: "Creon suffers the consequence of his overweening pride. He lost his loved ones. This reversal of fortune of Creon is termed as ___",
+        options: ["anake","danke","mimesis","peripeteia"],
+        answer: 3,
+        rationale: "Peripeteia (from Greek tragedy) refers to the sudden reversal of fortune that a protagonist experiences. In Aristotelian poetics, it's a key element of tragedy, as seen in Sophocles' Antigone with Creon."
+      },
+      {
+        text: "A number of teachers _____ disappointment on the new policy.",
+        options: ["express","expresses","expressing","expressive"],
+        answer: 0,
+        rationale: "'A number of' takes a plural verb. 'A number of teachers express' is correct. Note: 'The number of teachers expresses' would be singular, but 'a number of' always uses plural agreement."
+      },
+      {
+        text: "The classic tongue twister: 'Peter Piper pick a peck of pickled pepper' is an example of:",
+        options: ["assonance","alliteration","onomatopoeia","consonance"],
+        answer: 1,
+        rationale: "Alliteration is the repetition of the same initial consonant sound in consecutive or closely connected words. The 'P' sound repeated throughout 'Peter Piper picked a peck...' is a classic example of alliteration."
+      },
+      {
+        text: "Read the poem: 'Africa, tell me, Africa / Is this you? This back that is bent?' What figure of speech is used in line 1?",
+        options: ["oxymoron","metonymy","apostrophe","litotes"],
+        answer: 2,
+        rationale: "Apostrophe is a figure of speech where the speaker addresses an absent person, abstract idea, or thing as if it were present. Addressing 'Africa' directly ('Africa, tell me, Africa') is apostrophe."
+      },
+      {
+        text: "If I had known you before, we _____ arranged a joint project",
+        options: ["have","could had","could","could have"],
+        answer: 3,
+        rationale: "This is a third conditional sentence (unreal past). The correct structure is: If + past perfect, would/could/might + have + past participle. 'We could have arranged' is correct."
+      },
+      {
+        text: "Where is the Tupperware, Honey? The underlined word is a/an _____.",
+        options: ["subject","vocative","appositive","direct object"],
+        answer: 1,
+        rationale: "A vocative (or nominative of address) is a word used to directly address someone. 'Honey' here is used to address the person being spoken to, making it a vocative."
+      },
+      {
+        text: "Which sentence below uses a gerund as a subject?",
+        options: [
+          "I enjoy shopping with Anton.",
+          "Writing is an exchange of ideas.",
+          "My friends anticipated trying our new shoes.",
+          "The doctor tried to save the patient."
+        ],
+        answer: 1,
+        rationale: "In 'Writing is an exchange of ideas,' the gerund 'writing' functions as the subject of the sentence. In the other sentences, gerunds appear as objects, not subjects."
+      },
+      {
+        text: "Neither the salesperson nor the costumers _____ to feel cheated over the deal.",
+        options: ["want","wants","having want","wanting"],
+        answer: 0,
+        rationale: "With 'neither...nor,' the verb agrees with the subject closest to it (costumers – plural). So 'want' (plural) is correct. If it were 'neither the costumers nor the salesperson,' 'wants' would be correct."
+      },
+      {
+        text: "Which among the following is the longest epic poem written by a single poet?",
+        options: ["Epic of Sundiata","Shahnameh","Epic of Gilgamesh","Mahabharata"],
+        answer: 1,
+        rationale: "The Shahnameh (Book of Kings) by Persian poet Ferdowsi, written around 1010 CE, is the longest epic poem written by a single poet, containing approximately 60,000 verses."
+      },
+      {
+        text: "'She did not have the courage to break into the wedding feast.' What did the wedding feast stand for in Daguio's 'Wedding Dance'?",
+        options: ["village tradition","love for each other","desire to have a child","patriarchal society"],
+        answer: 0,
+        rationale: "In Amador Daguio's 'Wedding Dance,' the wedding feast symbolizes the tribal/village tradition that forces Awiyao to marry another woman because Lumnay could not bear him children. The feast represents the cultural tradition she cannot defy."
+      },
+      {
+        text: "'Reading makes a full man.'",
+        options: ["Robert Frost","Francis Bacon","William Shakespeare","Dante Alighieri"],
+        answer: 1,
+        rationale: "This famous quote is from Francis Bacon's essay 'Of Studies' (1597/1625). The full quote is: 'Reading maketh a full man; conference a ready man; and writing an exact man.'"
+      },
+      {
+        text: "'He asked her for her hand.'",
+        options: ["metonymy","synecdoche","allusion","litotes"],
+        answer: 1,
+        rationale: "Synecdoche is a figure of speech where a part represents the whole. 'Her hand' represents her entire person in a marriage proposal. Since 'hand' (part) stands for the whole person, it is synecdoche."
+      },
+      {
+        text: "The mayor, with his manager and supporters, __________ our barangay thrice a month.",
+        options: ["visit","visits","are visiting","have visited"],
+        answer: 1,
+        rationale: "The subject is 'the mayor' (singular). Phrases like 'with his manager and supporters' are parenthetical and don't change the subject. So the verb must be singular: 'visits.'"
+      },
+      {
+        text: "A kind of listening where background knowledge is use to make sense of what is heard.",
+        options: ["bottom-up","top-down","process listening","product listening"],
+        answer: 1,
+        rationale: "Top-down listening uses prior knowledge, context, and background information to interpret what is heard. It works from general meaning to specific details, as opposed to bottom-up listening which builds meaning from individual sounds."
+      },
+      {
+        text: "jockey : horse :: _______ : _______",
+        options: ["rider : motorcycle","chauffeur : car","engineer : train","passenger : bus"],
+        answer: 0,
+        rationale: "A jockey rides a horse in competition. Similarly, a rider rides a motorcycle. The analogy is about a person who rides/operates a specific vehicle. 'Rider : motorcycle' best mirrors the relationship."
+      },
+      {
+        text: "Which illustrates the proper use of semi-colon (;)?",
+        options: [
+          "JC knows every part of the game therefore; he should be made captain.",
+          "Harry is interested in business; John prefers medicine as a profession.",
+          "After Jason had finished playing; he opened the door and look at the glowing sky.",
+          "Maria had planned exactly what she would say consequently; she held the attention of the audience."
+        ],
+        answer: 1,
+        rationale: "A semicolon is correctly used to join two independent clauses of equal weight. 'Harry is interested in business' and 'John prefers medicine' are both independent clauses, properly joined by a semicolon."
+      },
+      {
+        text: "The doctor recommended eating healthier meals and ___.",
+        options: ["to do exercise","to exercise","doing exercise","exercise"],
+        answer: 2,
+        rationale: "Parallelism requires matching grammatical forms. 'Eating healthier meals' is a gerund phrase, so the parallel structure needs another gerund: 'doing exercise.' This maintains grammatical consistency."
+      },
+      {
+        text: "Neither of the accused officers decided to quit ___ position.",
+        options: ["their","his","its","her"],
+        answer: 1,
+        rationale: "'Neither' is singular and takes a singular pronoun. Since 'officers' is masculine-implied in context, 'his' is the singular masculine pronoun. Modern usage also accepts 'their,' but the test key selects 'his.'"
+      },
+      {
+        text: "The air around us ___.",
+        options: ["both contains oxygen and water","both contain oxygen and water","contains both oxygen and water","contain both oxygen and water"],
+        answer: 2,
+        rationale: "'The air' is singular, requiring 'contains.' 'Both' should precede 'oxygen and water' (the two items), not the verb. 'Contains both oxygen and water' is grammatically correct."
+      },
+      {
+        text: "Petrov, Yelena, and Dmitri were _____ at the diner, when suddenly, disaster struck.",
+        options: ["altogether","all together","besides","over"],
+        answer: 1,
+        rationale: "'All together' means everyone in a group at the same time/place. 'Altogether' means 'completely' or 'in total.' Since Petrov, Yelena, and Dmitri were gathered at the same place, 'all together' is correct."
+      },
+      {
+        text: "What literary device is highlighted in: 'Soon the sun's warmth makes them shed crystal shells / Shattering and avalanching on the snow-crust— / Such heaps of broken glass to sweep away / You'd think the inner dome of heaven had fallen.'",
+        options: ["synecdoche","metonymy","periphrasis","euphemism"],
+        answer: 2,
+        rationale: "Periphrasis uses a longer phrase in place of a shorter one. 'The inner dome of heaven' is a periphrastic expression referring to the sky. This elaborate descriptive phrase uses many words where fewer would suffice."
+      },
+      {
+        text: "The man was pulling the horse's ___.",
+        options: ["rain","rind","reign","rein"],
+        answer: 3,
+        rationale: "A 'rein' is a strap attached to a horse's bit used to control the animal. 'Rain' is precipitation, 'rind' is fruit skin, and 'reign' refers to royal rule. Only 'rein' fits this context."
+      },
+      {
+        text: "Which order of adjectives is arranged correctly?",
+        options: ["philosophy old boring","old philosophy boring","boring philosophy old","boring old philosophy"],
+        answer: 3,
+        rationale: "The correct order of adjectives in English is: Opinion → Age → (size/shape/color) → Noun. So 'boring' (opinion) comes before 'old' (age) before 'philosophy' (noun): 'boring old philosophy.'"
+      },
+      {
+        text: "The president is known for his CANDIDNESS. The capitalized word means",
+        options: ["frankness","honesty","presence","posture"],
+        answer: 0,
+        rationale: "Candidness means the quality of being frank, open, and direct in speech or expression. While similar to honesty, 'frankness' is the closest and most precise synonym for candidness."
+      },
+    ]
+  },
+  {
+    label: 'Science & Biology',
+    questions: [
+      {
+        text: "Hemophilia is a common sex-linked disorder that is X-linked recessive trait. If a man is hemophiliac, this means that ____.",
+        options: [
+          "He got the disease from his mother.",
+          "He will have children with hemophilia",
+          "All his brothers and sisters will be hemophiliac.",
+          "None of his brothers and sisters will be hemophiliac."
+        ],
+        answer: 0,
+        rationale: "Hemophilia is X-linked recessive. Males have XY chromosomes. A hemophiliac man (X^h Y) received his only X chromosome (which carries the defective gene) from his mother, who is a carrier (X X^h). He got the disease from his mother."
+      },
+      {
+        text: "In the stem of a plant respiration, breathing takes place through ___",
+        options: ["lenticels","stomata","root hair","air tube"],
+        answer: 0,
+        rationale: "In stems, gas exchange for respiration occurs through lenticels – small pores on the stem's bark. Stomata are found on leaves for photosynthesis-related gas exchange. Lenticels replace stomata in woody stems."
+      },
+      {
+        text: "What French scientist is considered as the Father of Paleontology?",
+        options: ["August Comte","Marquis de Condorcet","Jacque Tonnies","George Cuvier"],
+        answer: 3,
+        rationale: "Georges Cuvier (1769–1832) is considered the Father of Paleontology. He established the principles of comparative anatomy and used fossil evidence to demonstrate that species could go extinct."
+      },
+      {
+        text: "Where on the electromagnetic spectrum is visible light found?",
+        options: [
+          "between microwave and infrared waves",
+          "between infrared and ultraviolet waves",
+          "between radio waves and microwave",
+          "between x-ray and gamma ray"
+        ],
+        answer: 1,
+        rationale: "Visible light occupies the electromagnetic spectrum between infrared radiation (longer wavelengths) and ultraviolet radiation (shorter wavelengths), with wavelengths roughly from 380 to 700 nanometers."
+      },
+      {
+        text: "What law states that no two objects can occupy the same space at the same time?",
+        options: ["Law of Thermodynamics","Law of Relativity","Law of Impenetrability","Law of Conservation of Mass and Energy"],
+        answer: 2,
+        rationale: "The Law of Impenetrability states that no two objects can occupy the same space at the same time. This is a fundamental property of matter related to its solidity and the exclusion principle."
+      },
+      {
+        text: "The color of the hottest star is _____.",
+        options: ["orange","blue","yellow","white"],
+        answer: 1,
+        rationale: "In stellar classification, blue (or blue-white) stars are the hottest, with surface temperatures exceeding 10,000 K. The color-temperature progression is: red (coolest) → orange → yellow → white → blue (hottest). Our Sun is yellow."
+      },
+      {
+        text: "Dengue is an infectious disease transmitted by a carrier. This carrier is classified under Phylum Arthropoda and Class:",
+        options: ["Arachnida","Chordata","Insecta","Monera"],
+        answer: 2,
+        rationale: "The Aedes aegypti mosquito, which transmits dengue fever, belongs to Class Insecta (insects) under Phylum Arthropoda. Insects have 3 body segments, 6 legs, and 2 antennae."
+      },
+      {
+        text: "What period of development is portrayed from the third prenatal month until the baby is born?",
+        options: ["germinal","embryonic","fetal","infancy"],
+        answer: 2,
+        rationale: "The fetal period begins at the start of the 9th week (3rd month) after fertilization and continues until birth. The germinal stage is weeks 1–2 and embryonic stage is weeks 3–8."
+      },
+      {
+        text: "A type of passive transport where movement of molecules is aided by transport proteins is called _____.",
+        options: ["diffusion","facilitated diffusion","osmosis","active transport"],
+        answer: 1,
+        rationale: "Facilitated diffusion is a type of passive transport where molecules move down their concentration gradient (no energy required) but with the help of specific membrane transport proteins (channels or carriers)."
+      },
+      {
+        text: "What process in all living things releases carbon dioxide as a waste product?",
+        options: ["transpiration","absorption","respiration","evaporation"],
+        answer: 2,
+        rationale: "Cellular respiration breaks down glucose to produce ATP energy, releasing carbon dioxide (CO₂) and water as byproducts. This occurs in all living cells: C₆H₁₂O₆ + 6O₂ → 6CO₂ + 6H₂O + ATP."
+      },
+      {
+        text: "What is true about prokaryotic cell and eukaryotic cell?",
+        options: [
+          "Prokaryotic cells contain true nucleus and eukaryotic do not contain a nucleus.",
+          "Prokaryotic cells do not contain nucleus and eukaryotic contain true nucleus.",
+          "Prokaryotic cells are generally quite a bit bigger than eukaryotic cells.",
+          "Prokaryotic cells and eukaryotic cells are both multicellular organisms."
+        ],
+        answer: 1,
+        rationale: "Prokaryotes (bacteria, archaea) lack a membrane-bound nucleus; their DNA floats in the cytoplasm. Eukaryotes (animals, plants, fungi) have a true nucleus enclosed by a nuclear membrane. Eukaryotes are generally larger."
+      },
+      {
+        text: "Fungal cell wall is made up of ___.",
+        options: ["Cellulose","Peptidoglycan","vacuoles","Chitin"],
+        answer: 3,
+        rationale: "Fungal cell walls are composed primarily of chitin, a nitrogen-containing polysaccharide. Plant cell walls are made of cellulose, and bacterial cell walls are made of peptidoglycan."
+      },
+      {
+        text: "After wound or cut in a body, blood coagulates through:",
+        options: ["WBC","RBC","Platelets","Plasma"],
+        answer: 2,
+        rationale: "Platelets (thrombocytes) are responsible for blood clotting (coagulation). When a vessel is injured, platelets aggregate at the site and release chemicals that initiate the clotting cascade to form a fibrin clot."
+      },
+      {
+        text: "In a plasma membrane, which of the following provides a general barrier to the movement of molecules?",
+        options: ["lipids","proteins","carbohydrates","all of the above"],
+        answer: 0,
+        rationale: "The phospholipid bilayer (lipids) forms the fundamental barrier of the plasma membrane. The hydrophobic tails of phospholipids prevent water-soluble molecules from freely passing through. Proteins create channels/pumps for specific transport."
+      },
+      {
+        text: "An individual with three X chromosomes is likely to be:",
+        options: ["a clinically normal female","an abnormal female","a Turner's individual","a Kleinfelter's individual"],
+        answer: 1,
+        rationale: "A person with three X chromosomes (XXX, Triple X syndrome or trisomy X) is phenotypically female but has an abnormal karyotype. They may have subtle developmental or learning differences. Turner's is 45,X; Klinefelter's is 47,XXY."
+      },
+      {
+        text: "Each of the following is a cell organelle except one. Which of the following is NOT a cell organelle?",
+        options: ["mitochondria","lysosome","cytoplasm","endoplasmic reticulum"],
+        answer: 2,
+        rationale: "The cytoplasm is NOT an organelle; it is the fluid-filled interior of the cell (excluding the nucleus) in which organelles are suspended. Mitochondria, lysosomes, and endoplasmic reticulum are all cell organelles."
+      },
+      {
+        text: "Which of the following is NOT an arachnid?",
+        options: ["lobster","scorpion","black widow spider","tick"],
+        answer: 0,
+        rationale: "Lobsters are crustaceans, not arachnids. Arachnids (Class Arachnida) include spiders, scorpions, ticks, and mites. Crustaceans (lobsters, crabs, shrimp) form a separate class under Phylum Arthropoda."
+      },
+      {
+        text: "Which of the following protein is used for blood clotting?",
+        options: ["fibrinogen","glucose","urea","glycogen"],
+        answer: 0,
+        rationale: "Fibrinogen is a soluble plasma protein that is converted to insoluble fibrin by thrombin during coagulation. Fibrin threads form the structural framework of a blood clot. Glucose and glycogen are carbohydrates; urea is a waste product."
+      },
+      {
+        text: "What molecule in the energy source that virtually does all of the work done by the cell?",
+        options: ["ATP","NADPH","ADP","NADP"],
+        answer: 0,
+        rationale: "ATP (Adenosine Triphosphate) is the primary energy currency of the cell. The energy released when ATP is hydrolyzed to ADP + Pi powers virtually all cellular processes including muscle contraction, active transport, and biosynthesis."
+      },
+      {
+        text: "In which part of an eye can one find a pigment which is responsible for brown, blue, or black color of the eyes?",
+        options: ["cornea","pupils","retina","iris"],
+        answer: 3,
+        rationale: "The iris contains melanin pigment that determines eye color. More melanin produces brown or black eyes; less melanin results in blue or green eyes. The pupil is just an opening; the cornea and retina serve other functions."
+      },
+      {
+        text: "The point on Earth's orbit farthest to moon is called _____.",
+        options: ["perigee","perihelion","apogee","aphelion"],
+        answer: 2,
+        rationale: "Apogee is the point in the Moon's orbit that is farthest from Earth. Perigee is the closest point. (Perihelion and aphelion refer to Earth's orbit around the Sun, not the Moon's orbit around Earth.)"
+      },
+      {
+        text: "Element X has an electron configuration of 1S² 2S² 2p⁴. Based on information, element x belongs to a/an ______ family.",
+        options: ["Boron (earth metal)","Carbon (tetrels)","Nitrogen (pnictogens)","Oxygen (chalcogen)"],
+        answer: 3,
+        rationale: "1S² 2S² 2p⁴ gives 8 electrons total → this is Oxygen (atomic number 8). Oxygen belongs to Group 16, the chalcogen family. The 2p⁴ configuration with 6 valence electrons confirms the chalcogen family."
+      },
+      {
+        text: "All of the following are characteristics of amphibians EXCEPT:",
+        options: ["moist skin","the absence of scale","metamorphosis","live is salt water"],
+        answer: 3,
+        rationale: "Amphibians do NOT live in salt water. They inhabit freshwater and moist terrestrial environments. Amphibians are characterized by moist permeable skin (for cutaneous respiration), absence of scales, and undergoing metamorphosis."
+      },
+      {
+        text: "The muscle which is under involuntary control is called _____.",
+        options: ["striated","smooth","skeletal","muscular"],
+        answer: 1,
+        rationale: "Smooth muscle is involuntary and found in internal organs (stomach, intestines, blood vessels). Skeletal (striated) muscle is voluntary and attached to bones. Cardiac muscle is also involuntary but is a separate category."
+      },
+      {
+        text: "Of the following substances, which provides the least source of energy for the body?",
+        options: ["protein","fats","carbohydrates","nucleic acid"],
+        answer: 0,
+        rationale: "Proteins provide 4 kcal/g, carbohydrates provide 4 kcal/g, and fats provide 9 kcal/g. While proteins and carbohydrates are equal in calories, proteins are the least preferred energy source as they are primarily used for building tissues. The body uses proteins for energy only as a last resort."
+      },
+    ]
+  },
+  {
+    label: 'Filipino Language & Literature',
+    questions: [
+      {
+        text: "Ang kwentong 'Ang Pagong at ang Unggoy' ay isang halimbawa ng pabula. Sino ang ama ng sinaunang pabula?",
+        options: ["Arestophanes","Aeschylus","Aesop","Sophocles"],
+        answer: 2,
+        rationale: "Si Aesop ang itinuturing na ama ng sinaunang pabula (fable). Siya ay isang manluluksa mula sa Greece na nabuhay noong ika-6 na siglo BCE. Ang kaniyang mga pabula ay nagtuturo ng mahahalagang aral."
+      },
+      {
+        text: "Anong uri ng tayutay ang ginamit sa pahayag na 'Bumaha ng dugo sa bayan ng San Antonio pagkatapos ng digmaan.'?",
+        options: ["pagsasatao o personipikasyon","pag-uyam","metaphor","pagmamalabis o hyperbole"],
+        answer: 3,
+        rationale: "Ang 'pagmamalabis o hyperbole' ang tayutay na ginamit. Ang pagsasabing 'bumaha ng dugo' ay labis-labis na paglalarawan upang ipakita ang malaking pagdurusa at pagkawasak na dulot ng digmaan."
+      },
+      {
+        text: "Alin sa sumusunod ang ginagamit sa paglinaw at pagdagdag ng impormasyon?",
+        options: ["samakatwid","namumukod","bukod-tangi","humigit-kumulang"],
+        answer: 0,
+        rationale: "Ang 'samakatwid' ay isang pangatnig na ginagamit upang ipaliwanag o ilinaw ang nauna nang pahayag. Ibig sabihin nito ay 'therefore' o 'in other words' sa Ingles."
+      },
+      {
+        text: "Ang kautusang ito ay ipinalabas ni Pang. Osmena na nagpapahintulot sa pagpapalimbag ng Talatinigang Tagalog-Ingles at Bararila sa Wikang Pambansa.",
+        options: ["Katutsang Tagapagpalaganap 134","Kautusang Tagapagpalaganap 184","Kautusang Tagapagpalaganap 263","Kautusang Tagapagpalaganap 448"],
+        answer: 2,
+        rationale: "Ang Kautusang Tagapagpaganap Blg. 263 (Executive Order 263) na inilabas ni Pangulong Sergio Osmeña ay nagpahintulot sa pagpapalimbag ng unang Talatinigan Tagalog-Ingles at Balarila sa Wikang Pambansa."
+      },
+      {
+        text: "Ang mga pahayag na 'Wiz ko feel ang hombre ditech, day!' at 'Tol, punta tyo mamya sa mall.'",
+        options: ["etnolek","ekolek","sosyolek","idyolek"],
+        answer: 2,
+        rationale: "Ang mga pahayag na ito ay mga halimbawa ng sosyolek – ang pagkakaiba-iba ng wika base sa grupong panlipunan. Ang mga salitang gaya ng 'wiz,' 'feel,' 'tol,' at 'mamya' ay mga salitang ginagamit ng isang partikular na grupong panlipunan."
+      },
+      {
+        text: "Ang may-akda ng nobelang 'The Bamboo Dancers' at siya ring iprinoklamang National Artist of the Philippines noong 1997.",
+        options: ["Jose Garcia Villa","Nick Joaquin","N.V.M. Gonzales","Buenaventura Medina"],
+        answer: 2,
+        rationale: "Si N.V.M. Gonzales (Nestor Vicente Madali Gonzales) ang sumulat ng nobelang 'The Bamboo Dancers' at iprinoklamang National Artist for Literature noong 1997."
+      },
+      {
+        text: "Panggaya na isa o ilang bahagi lamang ang gagayahin at hindi ang kabuuan.",
+        options: ["modelo","mock-up","ispesimen","tunay na bagay"],
+        answer: 1,
+        rationale: "Ang 'mock-up' ay isang representasyon o modelo na ginawa upang ipakita ang ilan o iilang katangian ng isang bagay, hindi ang buong kabuuan. Ito ay ginagamit sa pagtuturo at presentasyon."
+      },
+      {
+        text: "Alin ang hindi kabilang sa pangkat? (kalabaw, tandang, estudyante, manok)",
+        options: ["kalabaw","tandang","estudyante","manok"],
+        answer: 2,
+        rationale: "Ang 'estudyante' ang hindi kabilang sa pangkat. Ang kalabaw, tandang, at manok ay mga hayop, habang ang estudyante ay isang tao. Ang 'estudyante' ay iba ang kategorya kaysa sa tatlo."
+      },
+      {
+        text: "Ano ang ipinapapahiwaitg ng salitang may salungguhit? Matayog ang lipad ni Pepe kaya't bata pa siya'y nagsisikap na siya.",
+        options: ["May kayabangan si Pepe","Mataas ang pangarap ni Pepe","Marunong si Pepe","Ibig ni Pepe na maabot ang langit"],
+        answer: 1,
+        rationale: "Ang 'matayog ang lipad' ay isang idyoma na nangangahulugang may mataas na ambisyon o pangarap. Kaya ang tamang kahulugan ay 'Mataas ang pangarap ni Pepe.'"
+      },
+      {
+        text: "Alin sa mga sumusunod ang aral na ibinibigay ng epikong Muslim na INDARAPATRA AT SULAYMAN?",
+        options: ["Pagmamahal","Katapangan","Katapatan","Pagtanaw ng utang na loob"],
+        answer: 1,
+        rationale: "Ang epikong 'Indarapatra at Sulayman' ay nagtuturo ng katapangan. Ipinakita ito ni Indarapatra nang iligtas niya ang kaniyang kapatid na si Sulayman at ang mga tao mula sa mga masamang nilalang."
+      },
+      {
+        text: "Piliin ang pinakamatipid na salin ng pahayag na 'I went to the auditorium where the contest will be held.'",
+        options: [
+          "Nagpunta ako sa awditoryum na pagdarausan ng paligsahan.",
+          "Ako ay nagpunta sa awditoryum na kung saan idaraos ang paligsahan.",
+          "Nagpunta ako sa awditoryum na kung saan idaraos ang paligsahan.",
+          "Pinuntahan ko ang pagdarausang awditoryum."
+        ],
+        answer: 0,
+        rationale: "Ang pinakamatipid na salin ay 'Nagpunta ako sa awditoryum na pagdarausan ng paligsahan.' Ito ang pinakamaikli at pinaka-natural na salin na nagpapanatili ng buong kahulugan ng pangungusap."
+      },
+      {
+        text: "Ano ang pinakaangkop na kahulugan nito? 'Nagsasaya tayo ngayon sapagakat ang iyong namatay na kapatid ay muling nabuhay; ang nawawala ay muling nakita na.'",
+        options: [
+          "Ang pagsasama nila ay dahil sa muling pagbabalik ng kapatid.",
+          "Dapat silang magsaya sa muli nilang pagsasama-sama.",
+          "Ang pagbabago ng kapatid ay dapat pahalagahan",
+          "Ang pagbabalik ay dapat ipaghanda ng malaki"
+        ],
+        answer: 3,
+        rationale: "Ang pinakamalapit na kahulugan ay ang pagdiriwang o pagsasaya para sa pagbabalik. Ang pahayag ay isang analohiya ng Talinhagang Anak na Mapalad, at ang pagbabalik ng kapatid ay dahilan upang magdiwang nang malaki."
+      },
+      {
+        text: "Nasa anong kaganapan ng pandiwa ang pangungusap? 'Naglaro ng basketball sa Pedro Stadium ang koponan ng aming pamantasan.'",
+        options: ["Sanhi","Tagaganap","Kagamitan","Ganapan"],
+        answer: 3,
+        rationale: "Ang pangungusap ay nasa Ganapan (Locative focus) na kaganapan ng pandiwa. Ang 'sa Pedro Stadium' ay ang ganapan o lugar kung saan naganap ang kilos. Ang unlapi 'nag-' at ang katambal na 'sa' ay nagpapahiwatig ng Ganapan."
+      },
+      {
+        text: "Ano ang pinakadimensyon ng pagbasa kung saan ito ang nagiging pundasyon ng iba pang dimensyon?",
+        options: ["Literal","Pagpapahalaga","Aplikasyon","Interpretasyon"],
+        answer: 0,
+        rationale: "Ang Literal na dimensyon ng pagbasa ang pinakabatayang antas at siyang pundasyon ng lahat ng iba pang dimensyon. Kailangan munang maunawaan ang literal na kahulugan bago maabot ang interpretasyon, aplikasyon, at pagpapahalaga."
+      },
+      {
+        text: "Si Mariano Ponce ay propagandistang may sagisag sa panulat na ___.",
+        options: ["Tamaraw","Tikbalang","Kapre","Kalapate"],
+        answer: 0,
+        rationale: "Si Mariano Ponce ay gumamit ng sagisag na 'Tamaraw' sa kaniyang mga sulatin bilang isa sa mga propagandista ng kilusang propaganda noong panahon ng Kastila."
+      },
+      {
+        text: "Ang salitang VAKUL ng Ivatan at JAMBANGAN ng Tausug ay sa anong antas ng wika napabilang?",
+        options: ["Kolokyal","Bulgar","Lalawiganin","Dayalekto"],
+        answer: 2,
+        rationale: "Ang mga salitang VAKUL (damit-ulo ng mga Ivatan) at JAMBANGAN (vase/palayok ng mga Tausug) ay mga salitang Lalawiganin (regional words) – mga salitang natatangi sa isang partikular na rehiyon o lugar."
+      },
+      {
+        text: "Isang paraan upang maipakita ang pagkokontras ng mga ponema/tunog ay ang paggamit ng pares minimal. Alin and DI-DAPAT isama sa pangkat? (lasa-tasa, mesa-misa, bibi-bibe, tela-tila)",
+        options: ["lasa-tasa","mesa-misa","bibi-bibe","tela-tila"],
+        answer: 2,
+        rationale: "Ang pares minimal ay mga pares ng salita na naiiba lamang sa iisang ponema. Ang 'bibi-bibe' ay HINDI isang pares minimal dahil ang pagbabago ay sa patinig sa dulo (i→e) ngunit kailangan ding suriin ang buong pagkakaiba. Ang bibi't bibe ay mga hayop, hindi minimal pair sa phonemic sense."
+      },
+      {
+        text: "May Moro-Moro na naman sa senado kaya hindi natatapos ang usapin. Ginagamit ang Moro-Moro bilang _____.",
+        options: ["Pagtatanghal ng mga senador","Labanan ng babae at lalaki","Pamamahinga","Away ng sang-ayon at salungat na panig"],
+        answer: 3,
+        rationale: "Sa kontekstong ito, ang 'Moro-Moro' ay ginagamit bilang idyoma na nangangahulugang 'away ng sang-ayon at salungat na panig' o walang katapusang debate/argumento – tulad ng labanan sa dulang Moro-Moro."
+      },
+      {
+        text: "'Nakangiti ang buwan sa akin ngayong gabi.'",
+        options: ["pagtutulad","pagsasatao","pagwawangis","pag-uyam"],
+        answer: 1,
+        rationale: "Ang 'pagsasatao' (personification) ang tayutay na ginamit. Ang 'nakangiti ang buwan' ay nagbibigay ng katangiang pantao (ngiti) sa isang bagay na walang buhay (buwan)."
+      },
+      {
+        text: "'Ang mga rosas na ito ay para sa aking iniirog.' Ang katagang para ay isang _________.",
+        options: ["pantukoy","pandiwa","pang-ukol","pangawing"],
+        answer: 2,
+        rationale: "Ang 'para' sa pangungusap na ito ay isang pang-ukol (preposition). Ang pang-ukol ay nagpapakita ng ugnayan ng isang salita sa iba pang salita sa pangungusap, at ang 'para' ay nagpapahiwatig ng layunin o tatanggap."
+      },
+      {
+        text: "'Ang pag-ibig ay hindi bulag.' Anong uri ng panggalan ayon sa konsepto ang salitang pag-ibig?",
+        options: ["palansak","payak","tahas","basal"],
+        answer: 3,
+        rationale: "Ang 'pag-ibig' ay isang pangalang basal (abstract noun) – isang bagay na hindi nakikita, nahahawakan, o nararamdamang pisikal, kundi isang konsepto o damdamin lamang."
+      },
+      {
+        text: "Uri ng pagbabagong morpoponemiko na gumagamit ng pagpapalit ng posisyon ng ponema sa salita.",
+        options: ["asimilasyon","paglalapi","metatesis","pagkaltas"],
+        answer: 2,
+        rationale: "Ang metatesis ay ang pagbabago ng ayos o posisyon ng mga tunog/ponema sa loob ng isang salita. Halimbawa: 'alimango' → 'alimugo' o 'almusal' → 'alusmal.'"
+      },
+      {
+        text: "Aling pangungusap ang nagsasabi na siya ang pumatay at hindi ang nasasakdal?",
+        options: [
+          "Hindi, ako ang pumatay.",
+          "Hindi ako, ang pumatay.",
+          "Hindi ako ang pumatay.",
+          "Hindi ako ang, pumatay."
+        ],
+        answer: 0,
+        rationale: "'Hindi, ako ang pumatay.' – Ang puwit (,) pagkatapos ng 'Hindi' ay nagpapahiwatig na tinatanggihan ang isang akusasyon, at sinasabi niyang siya nga ang pumatay (hindi ang nasasakdal). Ang paglalagay ng kuwit ay nagbibigay ng tuon sa 'ako.'"
+      },
+      {
+        text: "One of the strengths of the Filipino character is 'pakikipagkapwa-tao'. This is manifested in all of the following except one:",
+        options: ["pakikiramdam","malasakit","pakikiramay","lakas ng loob"],
+        answer: 3,
+        rationale: "'Lakas ng loob' (courage/boldness) is a personal trait, not a manifestation of 'pakikipagkapwa-tao' (concern for others). Pakikiramdam (sensitivity), malasakit (concern), and pakikiramay (sympathy/condolence) all directly relate to caring for others."
+      },
+      {
+        text: "Pinakamababang lebel ng wika na impormal na nalikha at nabuo sa pagsasama-sama ng mga salitang pinaikli o pinahaba.",
+        options: ["pampanitikan","balbal","lalawiganin","kolokyal"],
+        answer: 1,
+        rationale: "Ang 'balbal' (slang) ang pinakamababang antas ng wika. Ito ay impormal na wika na binubuo ng mga pinaikli, pinahabang, o pinagsamang salita. Ginagamit ito ng mga kabataan at ilang grupong panlipunan."
+      },
+      {
+        text: "Sa mga bantas na gamit sa pangungusap, ano ang ginagamit pagkatapos ng pasalaysay?",
+        options: ["tutuldok","tandang pananong","tuldok","kuwit"],
+        answer: 2,
+        rationale: "Ang tuldok (period/full stop) ang ginagamit sa katapusan ng isang pasalaysay na pangungusap. Ang tutuldok ay para sa listahan, ang tandang pananong para sa tanong, at ang kuwit para sa pahinga."
+      },
+      {
+        text: "Piliin ang kasingkahulugan ng salitang nakasalungguhit. Mahigpit na nilulunggati.",
+        options: ["sinisikap","ginagawa","nilalayon","pinupuri"],
+        answer: 2,
+        rationale: "Ang 'nilulunggati' ay nangangahulugang 'hinahangad nang labis' o 'inaasam.' Ang pinakamalapit na kasingkahulugan ay 'nilalayon' – ang isang bagay na matagal nang nais o layunin."
+      },
+      {
+        text: "Ang pagpapalitan ng ideya, opinion, salaysay sa pamamagitan ng mga sagisag na tinatawag na _____.",
+        options: ["pagtuklas","pakikinig","paglalahad","talastasan"],
+        answer: 3,
+        rationale: "Ang 'talastasan' ay ang proseso ng pagpapalitan ng mga ideya, opinyon, at impormasyon sa pamamagitan ng mga sagisag (simbolo, salita). Ito ang komunikasyon sa pamamagitan ng wika."
+      },
+      {
+        text: "Siya ang sumulat ng Urbana at Felisa.",
+        options: ["Jose Rizal","Modesto De Castro","Jose Corazon De Jesus","Pedro Bukaneg"],
+        answer: 1,
+        rationale: "Si Padre Modesto de Castro ang sumulat ng 'Urbana at Felisa' (1864), isang aklat ng mga liham na nagtataglay ng tagubilin sa wastong pag-uugali para sa mga kababaihan."
+      },
+      {
+        text: "Ang Biag ni Lam-ang ay isang epiko na nagmula sa",
+        options: ["Bicolano","Ilocano","Ilonggo","Tagalog"],
+        answer: 1,
+        rationale: "Ang 'Biag ni Lam-ang' (Buhay ni Lam-ang) ay isang pre-colonial na epikong Ilocano mula sa Ilocos region ng Luzon. Ito ang unang epikong naitalâ sa Pilipinas noong 1640 ni Pedro Bukaneg."
+      },
+    ]
+  }
+];
+
+// ── Build the quiz ─────────────────────────────────────────────────────
+const container = document.getElementById('quiz-container');
+const letters = ['A','B','C','D','E'];
+let qGlobal = 0;
+
+SECTIONS.forEach(sec => {
+  const lbl = document.createElement('div');
+  lbl.className = 'section-label';
+  lbl.textContent = sec.label;
+  container.appendChild(lbl);
+
+  sec.questions.forEach(q => {
+    qGlobal++;
+    total++;
+    const card = document.createElement('div');
+    card.className = 'question-card';
+    card.dataset.answered = '0';
+
+    card.innerHTML = `
+      <div class="q-num">Question ${qGlobal}</div>
+      <div class="q-text">${q.text}</div>
+      <ul class="options">
+        ${q.options.map((opt, i) => `
+          <li class="option" data-index="${i}"
+            ondblclick="handleAnswer(this)"
+            title="Double-click to answer">
+            <span class="opt-letter">${letters[i]}</span>
+            <span>${opt}</span>
+          </li>`).join('')}
+      </ul>
+      <div class="rationale" id="rationale-${qGlobal}">
+        <strong>📘 Explanation</strong>${q.rationale}
+      </div>`;
+
+    // Store correct answer on card
+    card.dataset.correct = q.answer;
+    card.dataset.qid = qGlobal;
+    container.appendChild(card);
+  });
+});
+
+document.getElementById('sc-total').textContent = total;
+
+// ── Answer handler ─────────────────────────────────────────────────────
+function handleAnswer(optionEl) {
+  const card = optionEl.closest('.question-card');
+  if (card.dataset.answered === '1') return; // already answered
+
+  card.dataset.answered = '1';
+  const chosen   = parseInt(optionEl.dataset.index);
+  const correct  = parseInt(card.dataset.correct);
+  const qid      = card.dataset.qid;
+  const isRight  = chosen === correct;
+
+  // Lock all options
+  card.querySelectorAll('.option').forEach(el => {
+    el.classList.add('locked');
+    const idx = parseInt(el.dataset.index);
+    if (idx === correct) {
+      el.classList.add('correct');
+    } else if (idx === chosen && !isRight) {
+      el.classList.add('wrong');
+    } else {
+      el.classList.add('dimmed');
+    }
+  });
+
+  // Show rationale
+  document.getElementById('rationale-' + qid).classList.add('show');
+
+  // Sound & score
+  if (isRight) { playCorrect(); } else { playWrong(); }
+  updateScore(isRight);
+}
+</script>
+</body>
+</html>
